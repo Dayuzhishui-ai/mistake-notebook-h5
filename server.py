@@ -38,12 +38,17 @@ def get_db() -> libsql_client.Client:
     global _db_client
     if _db_client is None:
         if USE_TURSO:
+            # libsql_client 0.3.1 默认用 WebSocket 连 libsql://，Turso 当前会返回 400。
+            # 强制改用 HTTP 模式（已验证 /v2/pipeline 200 OK）。
+            url = TURSO_URL
+            if url.startswith("libsql://"):
+                url = "https://" + url[len("libsql://"):]
+            print(f"[Boot] Turso URL (HTTP mode): {url[:60]}...", flush=True)
             _db_client = libsql_client.create_client(
-                url=TURSO_URL,
+                url=url,
                 auth_token=TURSO_TOKEN,
             )
         else:
-            # 本地文件模式（开发用）
             _db_client = libsql_client.create_client(
                 url=f"file:{LOCAL_DB_FILE}",
             )
@@ -266,9 +271,15 @@ async def ocr_image_with_qwen(image_b64: str, media_type: str = "image/jpeg") ->
 # ==================== APP ====================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    print(f"[Boot] DB mode: {'Turso (remote)' if USE_TURSO else 'Local SQLite (' + str(LOCAL_DB_FILE) + ')'}")
-    print(f"[Boot] OCR: {'enabled' if DASHSCOPE_API_KEY else 'DISABLED (no DASHSCOPE_API_KEY)'}")
+    print(f"[Boot] Starting... USE_TURSO={USE_TURSO}, OCR={'on' if DASHSCOPE_API_KEY else 'off'}", flush=True)
+    try:
+        await init_db()
+        print(f"[Boot] DB ready ({'Turso' if USE_TURSO else 'Local SQLite'})", flush=True)
+    except Exception as e:
+        import traceback
+        print(f"[Boot] init_db FAILED: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
+        raise
     yield
     if _db_client:
         await _db_client.close()
