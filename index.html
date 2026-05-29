@@ -76,7 +76,10 @@
   <div class="deco-stars"></div>
   <!-- User bar: score + user info -->
   <div class="user-bar">
-    <div class="score-badge" id="score-badge">⭐ <span id="user-score">0</span> 分</div>
+    <div class="left-bar">
+      <div class="score-badge" id="score-badge">⭐ <span id="user-score">0</span> 分</div>
+      <button class="help-btn" onclick="showHelp()">📖 游戏说明</button>
+    </div>
     <div class="user-info">
       <span class="user-name" id="user-name"></span>
       <button class="logout-btn" onclick="doLogout()">退出</button>
@@ -189,6 +192,59 @@
   </div>
 </div>
 
+<!-- ====== HELP OVERLAY ====== -->
+<div id="help-overlay" onclick="hideHelp()">
+  <div class="help-card" onclick="event.stopPropagation()">
+    <div class="help-header">
+      <span class="help-icon">📖</span>
+      <h2>游戏说明</h2>
+    </div>
+    <div class="help-body">
+      <div class="help-section">
+        <div class="help-sec-title">🎯 游戏目标</div>
+        <p>把平时做错的数学题录入错题本，然后通过闯关练习，直到完全掌握！</p>
+      </div>
+      <div class="help-section">
+        <div class="help-sec-title">✏️ 如何录入错题</div>
+        <ul>
+          <li>点击主界面右下角的 <strong>＋ 录入错题</strong> 按钮</li>
+          <li>直接输入算式，如 <code>25+18</code>、<code>34-17</code></li>
+          <li>或拍照上传，让 AI 自动识别题目</li>
+          <li>每次可以批量录入多道题</li>
+        </ul>
+      </div>
+      <div class="help-section">
+        <div class="help-sec-title">🏆 四个关卡</div>
+        <ul>
+          <li>🌱 <strong>第一关</strong>：10以内加减法</li>
+          <li>⚔️ <strong>第二关</strong>：20以内加减法</li>
+          <li>🐉 <strong>第三关</strong>：两位数计算</li>
+          <li>👑 <strong>第四关</strong>：多步混合运算</li>
+        </ul>
+        <p>点击关卡选择题目数量，然后开始闯关！</p>
+      </div>
+      <div class="help-section">
+        <div class="help-sec-title">⭐ 积分规则</div>
+        <ul>
+          <li>答对一题：<strong>+10分</strong></li>
+          <li>答错一题：<strong>-5分</strong></li>
+          <li>全部答对额外奖励：<strong>+20分</strong></li>
+          <li>完全掌握的题目会移入"已掌握"，不再出现</li>
+        </ul>
+      </div>
+      <div class="help-section">
+        <div class="help-sec-title">💡 小技巧</div>
+        <ul>
+          <li>每道题答对 <strong>2次</strong> 即视为掌握</li>
+          <li>可以在"错题重做"中专门复习答错的题</li>
+          <li>加到手机桌面可以像 APP 一样使用！</li>
+        </ul>
+      </div>
+    </div>
+    <button class="help-close-btn" onclick="hideHelp()">我知道了 ✓</button>
+  </div>
+</div>
+
 <!-- ====== SETTINGS OVERLAY ====== -->
 <div id="settings-overlay">
   <div class="settings-card">
@@ -287,7 +343,31 @@
 
 <script>
 // ==================== AUTH STATE ====================
-let authToken = localStorage.getItem('authToken') || '';
+const TOKEN_EXPIRY_DAYS = 10;
+const TOKEN_KEY = 'authToken';
+const TOKEN_TS_KEY = 'authTokenTs';
+
+function saveToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(TOKEN_TS_KEY, Date.now().toString());
+}
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_TS_KEY);
+}
+function loadToken() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const ts = parseInt(localStorage.getItem(TOKEN_TS_KEY) || '0', 10);
+  if (!token) return '';
+  // 超过10天自动过期
+  if (Date.now() - ts > TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000) {
+    clearToken();
+    return '';
+  }
+  return token;
+}
+
+let authToken = loadToken();
 let currentUser = null;
 
 // ==================== API HELPER ====================
@@ -323,7 +403,7 @@ async function doLogin() {
   const data = await api('/api/login', 'POST', { username, password });
   if (data.ok) {
     authToken = data.token;
-    localStorage.setItem('authToken', authToken);
+    saveToken(authToken);
     await loadUserAndStart();
   } else {
     errEl.textContent = data.error || '登录失败';
@@ -342,17 +422,24 @@ async function doRegister() {
   const data = await api('/api/register', 'POST', { username, password, display_name });
   if (data.ok) {
     authToken = data.token;
-    localStorage.setItem('authToken', authToken);
+    saveToken(authToken);
     await loadUserAndStart();
   } else {
     errEl.textContent = data.error || '注册失败';
   }
 }
 
+function showHelp() {
+  document.getElementById('help-overlay').classList.add('active');
+}
+function hideHelp() {
+  document.getElementById('help-overlay').classList.remove('active');
+}
+
 async function doLogout() {
   await api('/api/logout', 'POST');
   authToken = '';
-  localStorage.removeItem('authToken');
+  clearToken();
   currentUser = null;
   document.getElementById('start-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
@@ -418,7 +505,7 @@ async function loadUserAndStart() {
   const meData = await api('/api/me');
   if (!meData.ok) {
     authToken = '';
-    localStorage.removeItem('authToken');
+    clearToken();
     document.getElementById('auth-screen').style.display = 'flex';
     return;
   }
