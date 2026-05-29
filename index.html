@@ -511,6 +511,12 @@ async function loadUserAndStart() {
   }
   currentUser = meData.user;
 
+  // 管理员直接跳转到后台
+  if (currentUser.is_admin) {
+    window.location.href = '/admin';
+    return;
+  }
+
   // Load questions
   const qData = await api('/api/questions');
   if (qData.ok) {

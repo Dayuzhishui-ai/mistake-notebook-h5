@@ -504,7 +504,14 @@ async function fetchAndRenderLogs(userId = null, limit = 200) {
 }
 
 function renderLogsTable(logs, compact) {
-  if (!logs.length) return '<div class="empty-state">暂无记录</div>';
+  if (!logs.length) return `
+    <div class="empty-state">
+      暂无操作记录<br>
+      <span style="font-size:0.8rem;margin-top:6px;display:block;color:var(--text3)">
+        操作日志从功能上线后开始记录，历史数据不包含在内。<br>
+        用户下次登录、录题、答题后即可看到记录。
+      </span>
+    </div>`;
   return `
     <div class="table-wrap">
       <table>
