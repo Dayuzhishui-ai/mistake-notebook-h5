@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 TURSO_URL = os.environ.get("TURSO_DATABASE_URL", "")
 TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "")
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin888")
 
 # 本地开发降级：若没有 Turso 配置，则使用本地 SQLite 文件
 LOCAL_DB_FILE = Path(__file__).parent / "game.db"
@@ -55,6 +56,17 @@ def get_db() -> libsql_client.Client:
     return _db_client
 
 
+def hash_password(pwd: str) -> str:
+    salt = "mistake-notes-salt-2024"
+    return hashlib.sha256((salt + pwd).encode()).hexdigest()
+
+
+def rows_to_dicts(rs) -> list[dict]:
+    """libsql_client.Row 不支持 dict()，按列名手动转换"""
+    cols = rs.columns
+    return [{c: row[c] for c in cols} for row in rs.rows]
+
+
 async def init_db():
     db = get_db()
     # 用户表
@@ -65,6 +77,7 @@ async def init_db():
             password_hash TEXT NOT NULL,
             display_name TEXT NOT NULL,
             score INTEGER DEFAULT 0,
+            is_admin INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
@@ -106,21 +119,54 @@ async def init_db():
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
+    # 操作日志表
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS action_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            action TEXT NOT NULL,
+            detail TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
     # 索引
     await db.execute("CREATE INDEX IF NOT EXISTS idx_questions_user ON questions(user_id, level)")
     await db.execute("CREATE INDEX IF NOT EXISTS idx_mastered_user ON mastered(user_id)")
     await db.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_action_log_user ON action_log(user_id, created_at)")
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_action_log_time ON action_log(created_at)")
+
+    # 旧库可能没有 is_admin 列，补加（忽略已存在的错误）
+    try:
+        await db.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+    # 自动创建 admin 用户
+    rs = await db.execute("SELECT id FROM users WHERE username='admin'")
+    if not rs.rows:
+        await db.execute(
+            "INSERT INTO users (username, password_hash, display_name, is_admin) VALUES (?,?,?,1)",
+            ["admin", hash_password(ADMIN_PASSWORD), "管理员"],
+        )
+        print(f"[Boot] Admin user created (password=ADMIN_PASSWORD env)", flush=True)
+    else:
+        # 确保 admin 拥有管理员权限
+        await db.execute("UPDATE users SET is_admin=1 WHERE username='admin'")
 
 
-def hash_password(pwd: str) -> str:
-    salt = "mistake-notes-salt-2024"
-    return hashlib.sha256((salt + pwd).encode()).hexdigest()
-
-
-def rows_to_dicts(rs) -> list[dict]:
-    """libsql_client.Row 不支持 dict()，按列名手动转换"""
-    cols = rs.columns
-    return [{c: row[c] for c in cols} for row in rs.rows]
+# ==================== LOGGING ====================
+async def log_action(user_id: int, username: str, action: str, detail: str = ""):
+    """记录用户操作日志（失败不影响主流程）"""
+    try:
+        db = get_db()
+        await db.execute(
+            "INSERT INTO action_log (user_id, username, action, detail) VALUES (?,?,?,?)",
+            [user_id, username, action, detail],
+        )
+    except Exception as e:
+        print(f"[log_action] failed: {e}", flush=True)
 
 
 # ==================== SESSION ====================
@@ -161,6 +207,18 @@ async def require_user(request: Request) -> int:
     user_id = await get_user_id_from_request(request)
     if not user_id:
         raise HTTPException(status_code=401, detail={"ok": False, "error": "unauthorized"})
+    return user_id
+
+
+async def require_admin(request: Request) -> int:
+    """FastAPI 依赖：要求管理员权限"""
+    user_id = await get_user_id_from_request(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail={"ok": False, "error": "未登录"})
+    db = get_db()
+    rs = await db.execute("SELECT is_admin FROM users WHERE id=?", [user_id])
+    if not rs.rows or not rs.rows[0]["is_admin"]:
+        raise HTTPException(status_code=403, detail={"ok": False, "error": "无管理员权限"})
     return user_id
 
 
@@ -218,7 +276,6 @@ async def ocr_image_with_qwen(image_b64: str, media_type: str = "image/jpeg") ->
 5. 如果看不清或不是数学算式，跳过
 6. 只输出算式列表，不要任何其他文字"""
 
-    # DashScope 多模态接口
     url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
     payload = {
         "model": "qwen-vl-max",
@@ -246,16 +303,13 @@ async def ocr_image_with_qwen(image_b64: str, media_type: str = "image/jpeg") ->
             raise ValueError(f"DashScope API {resp.status_code}: {resp.text[:200]}")
         data = resp.json()
 
-    # 解析响应
     try:
         text = data["output"]["choices"][0]["message"]["content"]
         if isinstance(text, list):
-            # content 可能是 [{"text": "..."}] 这种格式
             text = "".join(item.get("text", "") for item in text if isinstance(item, dict))
-    except (KeyError, IndexError) as e:
+    except (KeyError, IndexError):
         raise ValueError(f"DashScope 响应格式异常: {data}")
 
-    # 提取算式
     lines = []
     for line in text.split("\n"):
         line = line.strip()
@@ -303,7 +357,7 @@ async def api_me(request: Request):
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
     db = get_db()
     rs = await db.execute(
-        "SELECT id, username, display_name, score FROM users WHERE id=?",
+        "SELECT id, username, display_name, score, is_admin FROM users WHERE id=?",
         [user_id],
     )
     if not rs.rows:
@@ -316,6 +370,7 @@ async def api_me(request: Request):
             "username": u["username"],
             "display_name": u["display_name"],
             "score": u["score"],
+            "is_admin": bool(u["is_admin"]),
         },
     }
 
@@ -362,6 +417,7 @@ async def api_register(request: Request):
     rs = await db.execute("SELECT id FROM users WHERE username=?", [username])
     new_id = rs.rows[0]["id"]
     token = await create_session(new_id)
+    await log_action(new_id, username, "注册", f"昵称: {display_name}")
     return {"ok": True, "token": token, "display_name": display_name}
 
 
@@ -380,6 +436,7 @@ async def api_login(request: Request):
         return {"ok": False, "error": "用户名或密码错误"}
     u = rs.rows[0]
     token = await create_session(u["id"])
+    await log_action(u["id"], username, "登录")
     return {
         "ok": True,
         "token": token,
@@ -439,6 +496,9 @@ async def api_add_question(request: Request, user_id: int = Depends(require_user
         "INSERT INTO questions (user_id, display, answer, type, level) VALUES (?,?,?,?,?)",
         [user_id, parsed["display"], parsed["answer"], parsed["type"], parsed["level"]],
     )
+    rs2 = await db.execute("SELECT username FROM users WHERE id=?", [user_id])
+    uname = rs2.rows[0]["username"] if rs2.rows else str(user_id)
+    await log_action(user_id, uname, "录入错题", parsed["display"])
     return {"ok": True, "added": parsed["display"]}
 
 
@@ -458,6 +518,10 @@ async def api_update_score(request: Request, user_id: int = Depends(require_user
         [user_id, delta, reason],
     )
     rs = await db.execute("SELECT score FROM users WHERE id=?", [user_id])
+    rs2 = await db.execute("SELECT username FROM users WHERE id=?", [user_id])
+    uname = rs2.rows[0]["username"] if rs2.rows else str(user_id)
+    sign = "+" if delta >= 0 else ""
+    await log_action(user_id, uname, "积分变化", f"{sign}{delta} ({reason})")
     return {"ok": True, "score": rs.rows[0]["score"]}
 
 
@@ -491,6 +555,11 @@ async def api_batch_add(request: Request, user_id: int = Depends(require_user)):
         )
         added.append(parsed["display"])
 
+    if added:
+        rs2 = await db.execute("SELECT username FROM users WHERE id=?", [user_id])
+        uname = rs2.rows[0]["username"] if rs2.rows else str(user_id)
+        await log_action(user_id, uname, "批量录题", f"成功{len(added)}题 重复{len(duplicates)} 错误{len(errors)}")
+
     return {
         "ok": True,
         "added": added,
@@ -507,8 +576,14 @@ async def api_ocr(request: Request, user_id: int = Depends(require_user)):
     media_type = body.get("media_type", "image/jpeg")
     if not image_b64:
         return {"ok": False, "error": "没有图片数据"}
+    if not DASHSCOPE_API_KEY:
+        return {"ok": False, "error": "OCR 功能未启用（管理员未配置 API Key）"}
     try:
         expressions = await ocr_image_with_qwen(image_b64, media_type)
+        db = get_db()
+        rs2 = await db.execute("SELECT username FROM users WHERE id=?", [user_id])
+        uname = rs2.rows[0]["username"] if rs2.rows else str(user_id)
+        await log_action(user_id, uname, "AI识图", f"识别出 {len(expressions)} 道题")
         return {"ok": True, "expressions": expressions, "count": len(expressions)}
     except Exception as e:
         return {"ok": False, "error": f"OCR识别失败: {str(e)}"}
@@ -516,18 +591,80 @@ async def api_ocr(request: Request, user_id: int = Depends(require_user)):
 
 @app.post("/api/import-legacy")
 async def api_import_legacy(user_id: int = Depends(require_user)):
-    # Render 上没有本地 md 文件，禁用此接口
     return {"ok": False, "error": "云端版本不支持导入本地文件，请使用拍照录题或手动输入"}
 
 
+# ==================== ADMIN API ====================
+@app.get("/api/admin/stats")
+async def api_admin_stats(admin_id: int = Depends(require_admin)):
+    db = get_db()
+    users_rs = await db.execute("SELECT COUNT(*) as n FROM users WHERE is_admin=0")
+    qs_rs = await db.execute("SELECT COUNT(*) as n FROM questions")
+    mastered_rs = await db.execute("SELECT COUNT(*) as n FROM mastered")
+    logs_rs = await db.execute("SELECT COUNT(*) as n FROM action_log")
+    return {
+        "ok": True,
+        "stats": {
+            "users": users_rs.rows[0]["n"],
+            "questions": qs_rs.rows[0]["n"],
+            "mastered": mastered_rs.rows[0]["n"],
+            "log_entries": logs_rs.rows[0]["n"],
+        }
+    }
+
+
+@app.get("/api/admin/users")
+async def api_admin_users(admin_id: int = Depends(require_admin)):
+    db = get_db()
+    rs = await db.execute("""
+        SELECT u.id, u.username, u.display_name, u.score, u.is_admin, u.created_at,
+               COUNT(DISTINCT q.id) as question_count,
+               COUNT(DISTINCT m.question_id) as mastered_count
+        FROM users u
+        LEFT JOIN questions q ON q.user_id = u.id
+        LEFT JOIN mastered m ON m.user_id = u.id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+    """)
+    users = rows_to_dicts(rs)
+    for user in users:
+        lr = await db.execute(
+            "SELECT created_at FROM action_log WHERE user_id=? ORDER BY created_at DESC LIMIT 1",
+            [user["id"]]
+        )
+        user["last_active"] = lr.rows[0]["created_at"] if lr.rows else None
+    return {"ok": True, "users": users}
+
+
+@app.get("/api/admin/logs")
+async def api_admin_logs(request: Request, admin_id: int = Depends(require_admin)):
+    user_id = request.query_params.get("user_id")
+    limit = int(request.query_params.get("limit", 200))
+    db = get_db()
+    if user_id:
+        rs = await db.execute(
+            "SELECT * FROM action_log WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            [int(user_id), limit]
+        )
+    else:
+        rs = await db.execute(
+            "SELECT * FROM action_log ORDER BY created_at DESC LIMIT ?",
+            [limit]
+        )
+    return {"ok": True, "logs": rows_to_dicts(rs)}
+
+
+@app.get("/admin")
+async def serve_admin():
+    return FileResponse(STATIC_DIR / "admin.html")
+
+
 # ==================== STATIC FILES (放最后) ====================
-# 单独处理根路径，确保 / 返回 index.html
 @app.get("/")
 async def serve_index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
-# 挂载所有其他静态资源（index.html、css、png、manifest.json、service-worker.js 等）
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 

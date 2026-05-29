@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理后台 · 错题闯关大冒险</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #22263a;
+      --border: #2e3348;
+      --accent: #6c63ff;
+      --accent2: #4ecdc4;
+      --warn: #f7b731;
+      --danger: #fc5c65;
+      --success: #26de81;
+      --text: #e2e8f0;
+      --text2: #8892a4;
+      --text3: #4a5568;
+      --radius: 12px;
+      --font: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .login-card h1 { font-size: 1.4rem; margin-bottom: 6px; }
+    .login-card p { color: var(--text2); font-size: 0.85rem; margin-bottom: 28px; }
+    .login-card input {
+      width: 100%; padding: 12px 16px;
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      font-size: 0.95rem; font-family: var(--font);
+      margin-bottom: 14px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .login-card input:focus { border-color: var(--accent); }
+    .login-card button {
+      width: 100%; padding: 13px;
+      background: var(--accent); border: none; border-radius: var(--radius);
+      color: white; font-size: 1rem; font-weight: 700;
+      font-family: var(--font); cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .login-card button:hover { opacity: 0.85; }
+    .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 10px; }
+
+    /* ── MAIN LAYOUT ── */
+    #main-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-title { font-size: 1rem; font-weight: 700; }
+    .topbar-title span { color: var(--accent); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .badge-users, .badge-logs {
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 700;
+    }
+    .badge-users { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .badge-logs { background: rgba(78,205,196,0.12); color: var(--accent2); }
+    .logout-link {
+      color: var(--text2); font-size: 0.82rem; cursor: pointer;
+      padding: 4px 8px; border-radius: 8px;
+      transition: color 0.2s;
+    }
+    .logout-link:hover { color: var(--danger); }
+
+    .main-content { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 200px; flex-shrink: 0;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+    .sidebar-label {
+      padding: 6px 16px 8px;
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .sidebar-item {
+      padding: 10px 16px;
+      cursor: pointer; font-size: 0.88rem;
+      color: var(--text2);
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    .sidebar-item:hover { background: var(--card2); color: var(--text); }
+    .sidebar-item.active {
+      background: rgba(108,99,255,0.1);
+      color: var(--accent);
+      border-left-color: var(--accent);
+      font-weight: 700;
+    }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    /* ── CONTENT PANE ── */
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── STAT CARDS ── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 18px;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--text2); margin-bottom: 8px; }
+    .stat-value { font-size: 2rem; font-weight: 900; }
+    .stat-card:nth-child(1) .stat-value { color: var(--accent); }
+    .stat-card:nth-child(2) .stat-value { color: var(--warn); }
+    .stat-card:nth-child(3) .stat-value { color: var(--success); }
+    .stat-card:nth-child(4) .stat-value { color: var(--accent2); }
+
+    /* ── SECTION ── */
+    .section-title {
+      font-size: 0.95rem; font-weight: 800;
+      margin-bottom: 14px; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .filter-bar select, .filter-bar input {
+      padding: 8px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-size: 0.85rem; font-family: var(--font); outline: none;
+    }
+    .filter-bar button {
+      padding: 8px 16px;
+      background: var(--accent); border: none;
+      border-radius: 8px; color: white;
+      font-size: 0.85rem; font-weight: 700;
+      font-family: var(--font); cursor: pointer;
+    }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 10px 14px; text-align: left;
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--text2); letter-spacing: 0.05em;
+      background: var(--card2);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 14px; font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 6px; font-size: 0.72rem; font-weight: 700;
+    }
+    .tag-admin { background: rgba(247,183,49,0.15); color: var(--warn); }
+    .tag-user  { background: rgba(108,99,255,0.12); color: var(--accent); }
+    .tag-login { background: rgba(38,222,129,0.12); color: var(--success); }
+    .tag-register { background: rgba(108,99,255,0.15); color: var(--accent); }
+    .tag-add { background: rgba(78,205,196,0.12); color: var(--accent2); }
+    .tag-score { background: rgba(247,183,49,0.12); color: var(--warn); }
+    .tag-ocr { background: rgba(252,92,101,0.12); color: var(--danger); }
+    .tag-default { background: rgba(255,255,255,0.05); color: var(--text2); }
+
+    .user-link {
+      color: var(--accent); cursor: pointer; text-decoration: underline;
+      font-weight: 600;
+    }
+    .user-link:hover { opacity: 0.8; }
+
+    .empty-state {
+      padding: 48px; text-align: center;
+      color: var(--text2); font-size: 0.9rem;
+    }
+
+    .loading {
+      padding: 40px; text-align: center;
+      color: var(--text2); font-size: 0.85rem;
+    }
+
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex; gap: 2px;
+      margin-bottom: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px;
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 7px 18px;
+      border: none; border-radius: 8px;
+      background: none; color: var(--text2);
+      font-size: 0.85rem; font-weight: 700;
+      font-family: var(--font); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active { background: var(--accent); color: white; }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .sidebar { display: none; }
+      .topbar { padding: 12px 16px; }
+      .content { padding: 16px; }
+      .stat-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====== LOGIN ====== -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>🛡️ 管理后台</h1>
+    <p>错题闯关大冒险 · 仅限管理员</p>
+    <input type="text" id="adm-username" placeholder="用户名" value="admin" autocomplete="username" />
+    <input type="password" id="adm-password" placeholder="密码" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter') doAdminLogin()" />
+    <button onclick="doAdminLogin()">登 录</button>
+    <div class="login-error" id="adm-error"></div>
+  </div>
+</div>
+
+<!-- ====== MAIN ====== -->
+<div id="main-screen">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-title">🛡️ <span>管理后台</span> · 错题闯关</div>
+    <div class="topbar-right">
+      <span class="badge-users" id="badge-users">用户 –</span>
+      <span class="badge-logs" id="badge-logs">日志 –</span>
+      <span class="logout-link" onclick="doAdminLogout()">退出</span>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-label">视图</div>
+      <div class="sidebar-item active" id="nav-overview" onclick="showView('overview')">📊 总览</div>
+      <div class="sidebar-item" id="nav-users" onclick="showView('users')">👤 用户管理</div>
+      <div class="sidebar-item" id="nav-logs" onclick="showView('logs')">📋 操作日志</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content" id="content">
+      <div class="loading">正在加载…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let adminToken = localStorage.getItem('adminToken') || '';
+let currentView = 'overview';
+let allUsers = [];
+let statsData = {};
+
+// ── API ──
+async function api(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (adminToken) opts.headers['Authorization'] = 'Bearer ' + adminToken;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+// ── LOGIN ──
+async function doAdminLogin() {
+  const username = document.getElementById('adm-username').value.trim();
+  const password = document.getElementById('adm-password').value.trim();
+  const errEl = document.getElementById('adm-error');
+  errEl.textContent = '';
+
+  if (!username || !password) { errEl.textContent = '请输入用户名和密码'; return; }
+
+  const data = await api('/api/login', 'POST', { username, password });
+  if (!data.ok) { errEl.textContent = data.error || '登录失败'; return; }
+
+  // 验证是否有管理员权限
+  adminToken = data.token;
+  const me = await api('/api/me');
+  if (!me.ok || !me.user.is_admin) {
+    adminToken = '';
+    errEl.textContent = '该账号没有管理员权限';
+    return;
+  }
+
+  localStorage.setItem('adminToken', adminToken);
+  showMain();
+}
+
+function doAdminLogout() {
+  api('/api/logout', 'POST');
+  adminToken = '';
+  localStorage.removeItem('adminToken');
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── MAIN ──
+function showMain() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'flex';
+  loadStats();
+  showView('overview');
+}
+
+async function loadStats() {
+  const data = await api('/api/admin/stats');
+  if (!data.ok) return;
+  statsData = data.stats;
+  document.getElementById('badge-users').textContent = `用户 ${data.stats.users}`;
+  document.getElementById('badge-logs').textContent = `日志 ${data.stats.log_entries}`;
+}
+
+// ── NAV ──
+function showView(view) {
+  currentView = view;
+  ['overview', 'users', 'logs'].forEach(v => {
+    document.getElementById('nav-' + v).classList.toggle('active', v === view);
+  });
+  if (view === 'overview') renderOverview();
+  else if (view === 'users') renderUsers();
+  else if (view === 'logs') renderLogs();
+}
+
+// ── OVERVIEW ──
+async function renderOverview() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="loading">加载中…</div>';
+  await loadStats();
+  const s = statsData;
+  el.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">👤 普通用户</div><div class="stat-value">${s.users ?? '–'}</div></div>
+      <div class="stat-card"><div class="stat-label">📝 错题总数</div><div class="stat-value">${s.questions ?? '–'}</div></div>
+      <div class="stat-card"><div class="stat-label">✅ 已掌握</div><div class="stat-value">${s.mastered ?? '–'}</div></div>
+      <div class="stat-card"><div class="stat-label">📋 操作日志</div><div class="stat-value">${s.log_entries ?? '–'}</div></div>
+    </div>
+    <div class="section-title"><div class="dot"></div>最近操作</div>
+    <div id="recent-logs"><div class="loading">加载中…</div></div>
+  `;
+  // 加载最近20条日志
+  const logs = await api('/api/admin/logs?limit=20');
+  if (logs.ok) {
+    document.getElementById('recent-logs').innerHTML = renderLogsTable(logs.logs, true);
+  }
+}
+
+// ── USERS ──
+async function renderUsers() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="loading">加载用户数据…</div>';
+  const data = await api('/api/admin/users');
+  if (!data.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+  allUsers = data.users;
+
+  el.innerHTML = `
+    <div class="section-title"><div class="dot"></div>用户列表（${allUsers.length} 人）</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>用户名</th>
+            <th>昵称</th>
+            <th>积分</th>
+            <th>错题</th>
+            <th>掌握</th>
+            <th>角色</th>
+            <th>最近活跃</th>
+            <th>注册时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allUsers.map(u => `
+            <tr>
+              <td style="color:var(--text3)">${u.id}</td>
+              <td>${u.username}</td>
+              <td>${u.display_name}</td>
+              <td style="font-weight:700;color:var(--warn)">${u.score}</td>
+              <td>${u.question_count}</td>
+              <td style="color:var(--success)">${u.mastered_count}</td>
+              <td><span class="tag ${u.is_admin ? 'tag-admin' : 'tag-user'}">${u.is_admin ? '管理员' : '普通'}</span></td>
+              <td style="color:var(--text2);font-size:0.8rem">${u.last_active ? fmtTime(u.last_active) : '无记录'}</td>
+              <td style="color:var(--text2);font-size:0.8rem">${fmtTime(u.created_at)}</td>
+              <td><span class="user-link" onclick="viewUserLogs(${u.id}, '${u.username}')">查看日志</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function viewUserLogs(userId, username) {
+  showView('logs');
+  // 等 DOM 渲染完再设置筛选
+  setTimeout(async () => {
+    const sel = document.getElementById('log-user-filter');
+    if (sel) {
+      sel.value = userId;
+      await fetchAndRenderLogs(userId);
+    }
+  }, 100);
+}
+
+// ── LOGS ──
+async function renderLogs() {
+  const el = document.getElementById('content');
+  el.innerHTML = `
+    <div class="section-title"><div class="dot" style="background:var(--accent2)"></div>操作日志</div>
+    <div class="filter-bar">
+      <select id="log-user-filter" onchange="onUserFilterChange()">
+        <option value="">全部用户</option>
+        ${allUsers.map(u => `<option value="${u.id}">${u.username}（${u.display_name}）</option>`).join('')}
+      </select>
+      <select id="log-limit-filter">
+        <option value="50">最近 50 条</option>
+        <option value="200" selected>最近 200 条</option>
+        <option value="500">最近 500 条</option>
+      </select>
+      <button onclick="refreshLogs()">刷新</button>
+    </div>
+    <div id="logs-table"><div class="loading">加载中…</div></div>
+  `;
+  await fetchAndRenderLogs();
+}
+
+async function onUserFilterChange() {
+  const userId = document.getElementById('log-user-filter').value;
+  await fetchAndRenderLogs(userId || null);
+}
+
+async function refreshLogs() {
+  const userId = document.getElementById('log-user-filter')?.value;
+  const limit = document.getElementById('log-limit-filter')?.value || 200;
+  await fetchAndRenderLogs(userId || null, limit);
+}
+
+async function fetchAndRenderLogs(userId = null, limit = 200) {
+  const el = document.getElementById('logs-table');
+  if (!el) return;
+  el.innerHTML = '<div class="loading">加载中…</div>';
+  const qs = new URLSearchParams({ limit });
+  if (userId) qs.set('user_id', userId);
+  const data = await api(`/api/admin/logs?${qs}`);
+  if (!data.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+  el.innerHTML = renderLogsTable(data.logs, false);
+}
+
+function renderLogsTable(logs, compact) {
+  if (!logs.length) return '<div class="empty-state">暂无记录</div>';
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            ${!compact ? '<th>ID</th>' : ''}
+            <th>时间</th>
+            <th>用户</th>
+            <th>操作</th>
+            <th>详情</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logs.map(l => `
+            <tr>
+              ${!compact ? `<td style="color:var(--text3);font-size:0.78rem">${l.id}</td>` : ''}
+              <td style="color:var(--text2);font-size:0.8rem;white-space:nowrap">${fmtTime(l.created_at)}</td>
+              <td>
+                <span class="user-link" onclick="viewUserLogs(${l.user_id}, '${l.username}')">${l.username}</span>
+              </td>
+              <td>${actionTag(l.action)}</td>
+              <td style="color:var(--text2);font-size:0.82rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                  title="${escHtml(l.detail)}">${escHtml(l.detail) || '–'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── HELPERS ──
+function actionTag(action) {
+  const map = {
+    '登录':   'tag-login',
+    '注册':   'tag-register',
+    '录入错题': 'tag-add',
+    '批量录题': 'tag-add',
+    '积分变化': 'tag-score',
+    'AI识图': 'tag-ocr',
+  };
+  const cls = map[action] || 'tag-default';
+  return `<span class="tag ${cls}">${action}</span>`;
+}
+
+function fmtTime(s) {
+  if (!s) return '–';
+  return s.replace('T', ' ').slice(0, 16);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── BOOT ──
+(async function boot() {
+  if (adminToken) {
+    // 验证 token 是否有效且是管理员
+    const me = await api('/api/me');
+    if (me.ok && me.user.is_admin) {
+      showMain();
+      return;
+    }
+    localStorage.removeItem('adminToken');
+    adminToken = '';
+  }
+  // 显示登录页
+})();
+</script>
+</body>
+</html>
