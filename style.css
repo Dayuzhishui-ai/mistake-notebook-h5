@@ -81,7 +81,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 20px 40px;
+  padding: 100px 20px 40px;
   position: relative;
 }
 
@@ -1293,6 +1293,7 @@ body {
   .level-preview { grid-template-columns: repeat(2, 1fr); max-width: 420px; }
   .level-card:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: 210px; justify-self: center; }
   #start-screen h1 { font-size: 2.1rem; }
+  #start-screen { padding-top: 90px; }
 }
 @media (max-width: 500px) {
   .q-card .q-text { font-size: 2rem; }
