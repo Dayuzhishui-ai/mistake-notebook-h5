@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.local
+
+# Local SQLite (dev only)
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Render artifacts
+.render/
+
+# 本地测试（含明文凭据，不能提交）
+test-turso-and-server.sh
+_dns_patch.py
+/tmp/test-server.log

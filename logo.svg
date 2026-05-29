@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" width="400" height="320">
+  <defs>
+    <!-- Outer rounded rect clip -->
+    <clipPath id="outer-clip">
+      <rect x="0" y="0" width="400" height="320" rx="28"/>
+    </clipPath>
+
+    <!-- Subtle drop shadow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#2D7A3A" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- Arrow head marker -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="8"
+            refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#E44519"/>
+    </marker>
+  </defs>
+
+  <!-- ── Background ── -->
+  <rect x="0" y="0" width="400" height="320" rx="28" fill="#F5F0E8"/>
+
+  <!-- ── Top section: three number tiles ── -->
+  <!-- Tile 1 -->
+  <rect x="28" y="28" width="100" height="100" rx="16"
+        fill="white" stroke="#4DAF5A" stroke-width="3"/>
+  <text x="78" y="102" text-anchor="middle"
+        font-family="'Fraunces', Georgia, serif" font-size="64" font-weight="900"
+        fill="#3A9A48">1</text>
+
+  <!-- Tile 2 -->
+  <rect x="150" y="28" width="100" height="100" rx="16"
+        fill="white" stroke="#4DAF5A" stroke-width="3"/>
+  <text x="200" y="102" text-anchor="middle"
+        font-family="'Fraunces', Georgia, serif" font-size="64" font-weight="900"
+        fill="#3A9A48">2</text>
+
+  <!-- Tile 3 -->
+  <rect x="272" y="28" width="100" height="100" rx="16"
+        fill="white" stroke="#4DAF5A" stroke-width="3"/>
+  <text x="322" y="102" text-anchor="middle"
+        font-family="'Fraunces', Georgia, serif" font-size="64" font-weight="900"
+        fill="#3A9A48">3</text>
+
+  <!-- ── Bottom section: green panel with chart ── -->
+  <rect x="28" y="152" width="344" height="140" rx="20" fill="#3A9A48"/>
+
+  <!-- Chart bars (flat, minimal rectangles) -->
+  <!-- Bar 1 - blue -->
+  <rect x="80"  y="252" width="32" height="24" rx="6" fill="#5BB8D4"/>
+  <!-- Bar 2 - mint green -->
+  <rect x="124" y="234" width="32" height="42" rx="6" fill="#7DD87F"/>
+  <!-- Bar 3 - yellow -->
+  <rect x="168" y="216" width="32" height="60" rx="6" fill="#F5C842"/>
+  <!-- Bar 4 - orange -->
+  <rect x="212" y="198" width="32" height="78" rx="6" fill="#F59813"/>
+  <!-- Bar 5 - coral red -->
+  <rect x="256" y="174" width="32" height="102" rx="6" fill="#E44519"/>
+
+  <!-- Rising arrow (curved path) -->
+  <path d="M 92 268  Q 150 240  250 178"
+        stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"
+        fill="none" marker-end="url(#arrowhead-white)"/>
+
+  <!-- White arrowhead marker -->
+  <defs>
+    <marker id="arrowhead-white" markerWidth="11" markerHeight="9"
+            refX="9" refY="4.5" orient="auto">
+      <polygon points="0 0, 11 4.5, 0 9" fill="white"/>
+    </marker>
+  </defs>
+
+  <!-- ── Outer border (full card) ── -->
+  <rect x="1.5" y="1.5" width="397" height="317" rx="27"
+        fill="none" stroke="#4DAF5A" stroke-width="3"/>
+</svg>

@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>🏰 错题闯关大冒险</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6c63ff">
+
+<!-- iOS 全屏 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="错题闯关">
+<link rel="apple-touch-icon" href="logo-192.png">
+
+<!-- Android / 通用 -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="错题闯关">
+
+<link rel="stylesheet" href="style.css?v=5">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .catch(err => console.warn('SW 注册失败:', err));
+    });
+  }
+</script>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ====== AUTH SCREEN ====== -->
+<div id="auth-screen">
+  <div class="deco-stars"></div>
+  <img src="错题本软件logo设计 (4).png" alt="错题闯关大冒险" class="app-logo" />
+  <h1>错题<span class="highlight">闯关</span>大冒险</h1>
+  <p class="subtitle">登录后开始你的数学冒险之旅！🦸</p>
+
+  <div class="auth-card" id="login-card">
+    <h2>👋 欢迎回来</h2>
+    <div class="auth-field">
+      <input type="text" id="login-username" placeholder="用户名" autocomplete="username" />
+    </div>
+    <div class="auth-field">
+      <input type="password" id="login-password" placeholder="密码" autocomplete="current-password" />
+    </div>
+    <div class="auth-error" id="login-error"></div>
+    <button class="auth-btn primary" onclick="doLogin()">登录 🚀</button>
+    <button class="auth-btn link" onclick="showRegister()">没有账号？注册一个</button>
+  </div>
+
+  <div class="auth-card" id="register-card" style="display:none">
+    <h2>✨ 创建新账号</h2>
+    <div class="auth-field">
+      <input type="text" id="reg-username" placeholder="用户名（至少2位）" autocomplete="username" />
+    </div>
+    <div class="auth-field">
+      <input type="text" id="reg-display" placeholder="昵称（选填）" />
+    </div>
+    <div class="auth-field">
+      <input type="password" id="reg-password" placeholder="密码（至少3位）" autocomplete="new-password" />
+    </div>
+    <div class="auth-error" id="reg-error"></div>
+    <button class="auth-btn primary" onclick="doRegister()">注册 🎉</button>
+    <button class="auth-btn link" onclick="showLogin()">已有账号？去登录</button>
+  </div>
+</div>
+
+<!-- ====== START SCREEN ====== -->
+<div id="start-screen" style="display:none">
+  <div class="deco-stars"></div>
+  <!-- User bar: score + user info -->
+  <div class="user-bar">
+    <div class="score-badge" id="score-badge">⭐ <span id="user-score">0</span> 分</div>
+    <div class="user-info">
+      <span class="user-name" id="user-name"></span>
+      <button class="logout-btn" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <img src="错题本软件logo设计 (4).png" alt="错题闯关大冒险" class="app-logo app-logo-sm" />
+  <h1>错题<span class="highlight">闯关</span>大冒险</h1>
+  <p class="subtitle">选择关卡，消灭错题怪兽，变成数学小超人！🦸</p>
+  <div class="level-preview">
+    <div class="level-card" id="lv1-card" onclick="openSettings(1)">
+      <div class="lc-emoji">🌱</div>
+      <div class="lc-name">第一关 · 新手村</div>
+      <div class="lc-desc">10以内加减法</div>
+      <div class="lc-count" id="lv1-count"></div>
+      <div class="lc-remaining" id="lv1-remaining"></div>
+      <div class="lc-badge" id="lv1-badge" style="display:none">✅ 闯关成功</div>
+    </div>
+    <div class="level-card" id="lv2-card" onclick="openSettings(2)">
+      <div class="lc-emoji">⚔️</div>
+      <div class="lc-name">第二关 · 冒险森林</div>
+      <div class="lc-desc">20以内加减法</div>
+      <div class="lc-count" id="lv2-count"></div>
+      <div class="lc-remaining" id="lv2-remaining"></div>
+      <div class="lc-badge" id="lv2-badge" style="display:none">✅ 闯关成功</div>
+    </div>
+    <div class="level-card" id="lv3-card" onclick="openSettings(3)">
+      <div class="lc-emoji">🐉</div>
+      <div class="lc-name">第三关 · 巨龙峡谷</div>
+      <div class="lc-desc">两位数计算</div>
+      <div class="lc-count" id="lv3-count"></div>
+      <div class="lc-remaining" id="lv3-remaining"></div>
+      <div class="lc-badge" id="lv3-badge" style="display:none">✅ 闯关成功</div>
+    </div>
+    <div class="level-card" id="lv4-card" onclick="openSettings(4)">
+      <div class="lc-emoji">👑</div>
+      <div class="lc-name">第四关 · 魔王城堡</div>
+      <div class="lc-desc">多步混合运算</div>
+      <div class="lc-count" id="lv4-count"></div>
+      <div class="lc-remaining" id="lv4-remaining"></div>
+      <div class="lc-badge" id="lv4-badge" style="display:none">✅ 闯关成功</div>
+    </div>
+    <div class="level-card" id="lv5-card" onclick="openSettings(5)">
+      <div class="lc-emoji">🚀</div>
+      <div class="lc-name">第五关 · 数字天空</div>
+      <div class="lc-desc">三位数计算</div>
+      <div class="lc-count" id="lv5-count"></div>
+      <div class="lc-remaining" id="lv5-remaining"></div>
+      <div class="lc-badge" id="lv5-badge" style="display:none">✅ 闯关成功</div>
+    </div>
+  </div>
+  <div class="start-actions">
+    <button class="add-btn" onclick="openAddQuestion()">📝 录入新错题</button>
+  </div>
+</div>
+
+<!-- ====== ADD QUESTION OVERLAY (批量录入) ====== -->
+<div id="add-overlay">
+  <div class="add-card batch-card">
+    <h2>📥 批量录入错题</h2>
+
+    <!-- 标签栏 -->
+    <div class="batch-tabs">
+      <button class="batch-tab active" id="tab-photo" onclick="switchBatchTab('photo')">
+        📷 拍照识别
+      </button>
+      <button class="batch-tab" id="tab-manual" onclick="switchBatchTab('manual')">
+        ✏️ 手动输入
+      </button>
+    </div>
+
+    <!-- 拍照面板 -->
+    <div class="batch-panel" id="panel-photo">
+      <div class="photo-drop-zone" id="photo-drop-zone"
+           onclick="document.getElementById('photo-input').click()"
+           ondrop="handlePhotoDrop(event)"
+           ondragover="event.preventDefault()">
+        <div class="drop-icon">📷</div>
+        <div class="drop-text">点击拍照 / 选择图片</div>
+        <div class="drop-hint">支持 JPG、PNG，拖拽也可以</div>
+        <input type="file" id="photo-input" accept="image/*" capture="environment"
+               style="display:none" onchange="handlePhotoSelect(this)" />
+      </div>
+      <div id="photo-preview-wrap" style="display:none">
+        <img id="photo-preview" src="" alt="预览" />
+        <button class="photo-clear-btn" onclick="clearPhoto()">✕ 重新选择</button>
+      </div>
+      <button class="ocr-btn" id="ocr-btn" onclick="doOCR()" style="display:none">
+        🤖 AI识别算式
+      </button>
+      <div class="ocr-status" id="ocr-status"></div>
+    </div>
+
+    <!-- 题目表格（两个 tab 共用） -->
+    <div class="expr-table-wrap">
+      <div class="expr-table-header">
+        <span class="expr-table-hint">每行输入一道算式，如 <code>25+18</code> 或 <code>34-17</code></span>
+        <span class="expr-table-count" id="expr-table-count"></span>
+      </div>
+      <div class="expr-table-body" id="expr-tbody"></div>
+      <button class="add-row-btn" onclick="addExprRow()">＋ 再加一行</button>
+    </div>
+
+    <!-- 结果提示 -->
+    <div class="batch-result" id="batch-result" style="display:none"></div>
+
+    <!-- 操作按钮 -->
+    <button class="review-add-btn" onclick="submitTable()">✅ 确认添加到错题本</button>
+    <button class="add-cancel-btn" onclick="closeAddQuestion()">关闭</button>
+  </div>
+</div>
+
+<!-- ====== SETTINGS OVERLAY ====== -->
+<div id="settings-overlay">
+  <div class="settings-card">
+    <div class="sc-emoji" id="sc-emoji"></div>
+    <h2 id="sc-title"></h2>
+    <div class="sc-desc" id="sc-desc"></div>
+    <div class="count-options">
+      <button class="count-btn selected" onclick="selectCount(10, this)">10<span class="cb-label">题</span></button>
+      <button class="count-btn" onclick="selectCount(20, this)">20<span class="cb-label">题</span></button>
+      <button class="count-btn" onclick="selectCount(30, this)">30<span class="cb-label">题</span></button>
+    </div>
+    <button class="settings-start-btn" id="settings-start-btn" onclick="confirmStart()">开始答题 🚀</button>
+    <button class="settings-cancel-btn" onclick="closeSettings()">取消</button>
+  </div>
+</div>
+
+<!-- ====== GAME SCREEN ====== -->
+<div id="game-screen">
+  <div class="game-header">
+    <span class="level-tag" id="level-tag" onclick="toggleLevelSwitcher(event)">
+      <span id="level-tag-text"></span> ▾
+      <div class="level-switcher" id="level-switcher"></div>
+    </span>
+    <span class="timer-tag" id="timer-tag">⏱️ <span id="timer-display">00:00</span></span>
+    <span class="progress-text" id="progress-text"></span>
+    <span class="hearts" id="hearts"></span>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+  </div>
+  <div class="game-body">
+    <div class="q-card" id="q-card">
+      <button class="home-btn" onclick="goHome()" title="返回首页">🏠 返回主页</button>
+      <div class="q-num" id="q-num"></div>
+      <div class="q-emoji" id="q-emoji"></div>
+      <div class="q-text" id="q-text"></div>
+      <input type="number" id="answer-input" placeholder="输入答案" inputmode="numeric" />
+      <button class="submit-btn" id="submit-btn" onclick="submitAnswer()">提交答案 ✅</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FEEDBACK OVERLAY ====== -->
+<div id="feedback-overlay">
+  <div class="fb-card">
+    <div class="fb-emoji" id="fb-emoji"></div>
+    <div class="fb-title" id="fb-title"></div>
+    <div class="fb-detail" id="fb-detail"></div>
+    <button class="fb-btn" id="fb-btn" onclick="nextQuestion()"></button>
+  </div>
+</div>
+
+<!-- ====== LEVEL CLEAR ====== -->
+<div id="level-clear-overlay">
+  <div class="lc-card">
+    <div class="lc-big-emoji" id="lc-emoji"></div>
+    <div class="lc-big-title" id="lc-title"></div>
+    <div class="lc-stats" id="lc-stats"></div>
+    <div class="lc-time" id="lc-time"></div>
+    <div class="lc-stars" id="lc-stars"></div>
+    <div class="lc-score-change" id="lc-score-change"></div>
+    <button class="lc-next-btn" id="lc-next-btn" onclick="startNextLevel()"></button>
+    <button class="lc-home-btn" onclick="goHomeFromOverlay()">🏠 返回主页</button>
+  </div>
+</div>
+
+<!-- ====== RESULT SCREEN ====== -->
+<div id="result-screen">
+  <div class="result-emoji" id="result-emoji"></div>
+  <h1 id="result-title"></h1>
+  <div class="result-score" id="result-score"></div>
+  <div class="result-detail" id="result-detail"></div>
+  <div class="result-time" id="result-time"></div>
+  <div class="warning-banner" id="warning-banner" style="display:none">
+    <div class="wb-title">⚠️ 这些题还是做错了，已标记到错题本！</div>
+    <div class="wb-list" id="warning-list"></div>
+  </div>
+  <div class="result-table" id="result-table"></div>
+  <div>
+    <button class="result-btn" id="retry-wrong-btn" style="display:none" onclick="startRetryRound()">🔥 重做错题</button>
+    <button class="result-btn secondary" onclick="location.reload()">🔄 再来一局</button>
+    <button class="result-btn secondary" onclick="goHomeFromResult()">🏠 返回主页</button>
+  </div>
+</div>
+
+<!-- ====== RETRY INTRO ====== -->
+<div id="retry-intro">
+  <div class="retry-card">
+    <div class="rc-emoji">🔥</div>
+    <h2>错题重做挑战！</h2>
+    <p>以下题目你刚才做错了，再试一次吧！</p>
+    <div class="retry-list" id="retry-list"></div>
+    <button class="retry-start-btn" onclick="beginRetry()">💪 开始重做</button>
+  </div>
+</div>
+
+<script>
+// ==================== AUTH STATE ====================
+let authToken = localStorage.getItem('authToken') || '';
+let currentUser = null;
+
+// ==================== API HELPER ====================
+async function api(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+// ==================== AUTH ====================
+function showLogin() {
+  document.getElementById('login-card').style.display = 'block';
+  document.getElementById('register-card').style.display = 'none';
+}
+function showRegister() {
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('register-card').style.display = 'block';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!username || !password) { errEl.textContent = '请输入用户名和密码'; return; }
+
+  const data = await api('/api/login', 'POST', { username, password });
+  if (data.ok) {
+    authToken = data.token;
+    localStorage.setItem('authToken', authToken);
+    await loadUserAndStart();
+  } else {
+    errEl.textContent = data.error || '登录失败';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const display_name = document.getElementById('reg-display').value.trim();
+  const password = document.getElementById('reg-password').value.trim();
+  const errEl = document.getElementById('reg-error');
+  errEl.textContent = '';
+
+  if (!username || !password) { errEl.textContent = '请输入用户名和密码'; return; }
+
+  const data = await api('/api/register', 'POST', { username, password, display_name });
+  if (data.ok) {
+    authToken = data.token;
+    localStorage.setItem('authToken', authToken);
+    await loadUserAndStart();
+  } else {
+    errEl.textContent = data.error || '注册失败';
+  }
+}
+
+async function doLogout() {
+  await api('/api/logout', 'POST');
+  authToken = '';
+  localStorage.removeItem('authToken');
+  currentUser = null;
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// Enter key for login/register forms
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('auth-screen').style.display !== 'none') {
+    if (document.getElementById('login-card').style.display !== 'none') {
+      doLogin();
+    } else {
+      doRegister();
+    }
+    e.stopPropagation();
+  }
+}, true);
+
+// ==================== DATA ====================
+let ALL_QUESTIONS = [];
+
+const LEVEL_CONFIG = [
+  { level: 1, name: '新手村',   emoji: '🌱', color: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e, #16a34a)' },
+  { level: 2, name: '冒险森林', emoji: '⚔️', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
+  { level: 3, name: '巨龙峡谷', emoji: '🐉', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+  { level: 4, name: '魔王城堡', emoji: '👑', color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)' },
+  { level: 5, name: '数字天空', emoji: '🚀', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' },
+];
+
+// Score rules
+const SCORE_PER_LEVEL = { 1: 10, 2: 10, 3: 10, 4: 15, 5: 15 };
+const PENALTY_PER_WRONG = 2;
+
+const QUESTION_EMOJIS = ['🧩','🎯','🔥','💎','⭐','🎲','🏆','🌟','💡','🚀'];
+const CORRECT_MSGS = ['太棒了！🎉','完美！✨','你是天才！🧠','厉害！💪','正确！🌟','优秀！👏'];
+const WRONG_MSGS = ['差一点点～','再想想哦～','没关系，下次加油！','继续努力！'];
+
+// ==================== STATE ====================
+let levelQuestions = {};
+let currentLevel = 1;
+let currentQuestions = [];
+let currentIndex = 0;
+let correctCount = 0;
+let totalCorrect = 0;
+let totalAnswered = 0;
+let allResults = [];
+let wrongInRound = [];
+let isRetryMode = false;
+let selectedCount = 10;
+let pendingLevel = 1;
+let currentAttempt = 0;
+let masteredIds = new Set();
+let roundScoreDelta = 0; // Track score change per level
+
+// Timer
+let timerInterval = null;
+let timerSeconds = 0;
+let totalTimerSeconds = 0;
+
+// ==================== LOAD USER DATA ====================
+async function loadUserAndStart() {
+  // Load user info
+  const meData = await api('/api/me');
+  if (!meData.ok) {
+    authToken = '';
+    localStorage.removeItem('authToken');
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
+  currentUser = meData.user;
+
+  // Load questions
+  const qData = await api('/api/questions');
+  if (qData.ok) {
+    ALL_QUESTIONS = qData.questions;
+    masteredIds = new Set(qData.mastered_ids);
+  }
+
+  // Show main screen
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+
+  // Update user display
+  document.getElementById('user-name').textContent = currentUser.display_name;
+  document.getElementById('user-score').textContent = currentUser.score;
+
+  init();
+}
+
+// ==================== INIT ====================
+function init() {
+  for (let lv = 1; lv <= 5; lv++) {
+    const pool = ALL_QUESTIONS.filter(q => q.level === lv && !masteredIds.has(q.id));
+    shuffle(pool);
+    levelQuestions[lv] = pool;
+  }
+  updateStartScreen();
+}
+
+function updateStartScreen() {
+  // Update score display
+  if (currentUser) {
+    document.getElementById('user-score').textContent = currentUser.score;
+  }
+
+  for (let lv = 1; lv <= 5; lv++) {
+    const total = ALL_QUESTIONS.filter(q => q.level === lv).length;
+    const mastered = ALL_QUESTIONS.filter(q => q.level === lv && masteredIds.has(q.id)).length;
+    const remaining = total - mastered;
+    const el = document.getElementById(`lv${lv}-count`);
+    if (el) el.textContent = `共 ${total} 题 · 已掌握 ${mastered} 题`;
+    const remEl = document.getElementById(`lv${lv}-remaining`);
+    const badgeEl = document.getElementById(`lv${lv}-badge`);
+    const cardEl = document.getElementById(`lv${lv}-card`);
+    if (remaining === 0 && total > 0) {
+      if (remEl) { remEl.textContent = ''; remEl.style.display = 'none'; }
+      if (badgeEl) { badgeEl.style.display = 'inline-block'; }
+      if (cardEl) { cardEl.classList.add('mastered'); }
+    } else {
+      if (remEl) {
+        remEl.textContent = total > 0 ? `剩余 ${remaining} 题待闯关` : '暂无题目';
+        remEl.style.display = 'block';
+      }
+      if (badgeEl) { badgeEl.style.display = 'none'; }
+      if (cardEl) { cardEl.classList.remove('mastered'); }
+    }
+    levelQuestions[lv] = ALL_QUESTIONS.filter(q => q.level === lv && !masteredIds.has(q.id));
+    shuffle(levelQuestions[lv]);
+  }
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ==================== SETTINGS ====================
+function openSettings(lv) {
+  const remaining = ALL_QUESTIONS.filter(q => q.level === lv && !masteredIds.has(q.id)).length;
+  if (remaining === 0) return;
+  pendingLevel = lv;
+  selectedCount = 10;
+  const cfg = LEVEL_CONFIG[lv - 1];
+  const total = levelQuestions[lv].length;
+
+  document.getElementById('sc-emoji').textContent = cfg.emoji;
+  document.getElementById('sc-title').textContent = `第${lv}关 · ${cfg.name}`;
+  document.getElementById('sc-desc').textContent = `还有 ${total} 道错题待攻克`;
+  document.getElementById('settings-start-btn').style.background = cfg.gradient;
+
+  const counts = [10, 20, 30];
+  let firstAvail = -1;
+  document.querySelectorAll('.count-btn').forEach((btn, i) => {
+    const available = counts[i] <= total;
+    btn.disabled = !available;
+    btn.style.opacity = available ? 1 : 0.3;
+    btn.classList.remove('selected');
+    if (available && firstAvail === -1) firstAvail = i;
+  });
+  if (firstAvail >= 0) {
+    document.querySelectorAll('.count-btn')[firstAvail].classList.add('selected');
+    selectedCount = counts[firstAvail];
+  } else {
+    selectedCount = total;
+  }
+
+  document.getElementById('settings-overlay').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('active');
+}
+
+function selectCount(n, el) {
+  selectedCount = n;
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function confirmStart() {
+  closeSettings();
+  startFromLevel(pendingLevel, selectedCount);
+}
+
+// ==================== TIMER ====================
+function startTimer() {
+  timerSeconds = 0;
+  updateTimerDisplay();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds / 60);
+  const s = timerSeconds % 60;
+  const el = document.getElementById('timer-display');
+  if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+}
+
+// ==================== LEVEL SWITCHER ====================
+function toggleLevelSwitcher(e) {
+  e.stopPropagation();
+  const sw = document.getElementById('level-switcher');
+  const isOpen = sw.classList.contains('open');
+  sw.classList.toggle('open');
+  if (!isOpen) {
+    sw.innerHTML = '';
+    for (let lv = 1; lv <= 5; lv++) {
+      const cfg = LEVEL_CONFIG[lv - 1];
+      const count = levelQuestions[lv].length;
+      const div = document.createElement('div');
+      div.className = 'ls-item' + (lv === currentLevel ? ' current' : '');
+      div.innerHTML = `${cfg.emoji} 第${lv}关 · ${cfg.name} <span style="opacity:0.5;font-size:0.8rem;margin-left:auto">${count}题</span>`;
+      div.onclick = (ev) => { ev.stopPropagation(); switchLevel(lv); };
+      sw.appendChild(div);
+    }
+  }
+}
+
+function switchLevel(lv) {
+  document.getElementById('level-switcher').classList.remove('open');
+  if (lv === currentLevel) return;
+  stopTimer();
+  totalTimerSeconds += timerSeconds;
+  currentLevel = lv;
+  startLevel(currentLevel);
+  startTimer();
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('level-switcher')?.classList.remove('open');
+});
+
+// ==================== GAME FLOW ====================
+function startFromLevel(lv, count) {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  currentLevel = lv;
+  totalCorrect = 0;
+  totalAnswered = 0;
+  totalTimerSeconds = 0;
+  allResults = [];
+  wrongInRound = [];
+  isRetryMode = false;
+  selectedCount = count || 10;
+  startLevel(currentLevel);
+  startTimer();
+}
+
+function startLevel(lv) {
+  const pool = levelQuestions[lv];
+  shuffle(pool);
+  currentQuestions = pool.slice(0, selectedCount);
+  if (currentQuestions.length === 0) {
+    if (lv < 5) { currentLevel = lv + 1; startLevel(currentLevel); }
+    else { stopTimer(); totalTimerSeconds += timerSeconds; showFinalResult(); }
+    return;
+  }
+  currentIndex = 0;
+  correctCount = 0;
+  roundScoreDelta = 0;
+  updateHeader();
+  showQuestion();
+}
+
+function updateHeader() {
+  const cfg = LEVEL_CONFIG[currentLevel - 1];
+  document.getElementById('level-tag-text').textContent = `${cfg.emoji} 第${currentLevel}关 · ${cfg.name}`;
+  document.getElementById('level-tag').style.background = cfg.gradient;
+  document.getElementById('progress-text').textContent = `${currentIndex + 1} / ${currentQuestions.length}`;
+  const pct = (currentIndex / currentQuestions.length) * 100;
+  const bar = document.getElementById('progress-bar-fill');
+  bar.style.width = pct + '%';
+  bar.style.background = cfg.gradient;
+  const wrongSoFar = currentIndex - correctCount;
+  const maxWrong = 7;
+  const heartsLeft = Math.max(0, maxWrong - wrongSoFar);
+  document.getElementById('hearts').textContent = '❤️'.repeat(Math.min(heartsLeft, 5)) + (heartsLeft > 5 ? `+${heartsLeft-5}` : '');
+  document.getElementById('submit-btn').style.background = cfg.gradient;
+}
+
+function showQuestion() {
+  const q = currentQuestions[currentIndex];
+  document.getElementById('q-num').textContent = `第 ${currentLevel} 关 · 第 ${currentIndex + 1} 题（共 ${currentQuestions.length} 题）`;
+  document.getElementById('q-emoji').textContent = QUESTION_EMOJIS[currentIndex % QUESTION_EMOJIS.length];
+  let displayText = q.display;
+  if (q.type === 'fill_blank') {
+    displayText = displayText.replace('（）', '(?)').replace('()', '(?)');
+  }
+  document.getElementById('q-text').textContent = displayText;
+  const input = document.getElementById('answer-input');
+  input.value = '';
+  input.placeholder = q.type === 'fill_blank' ? '(?) 里填几？' : '输入答案';
+  const card = document.getElementById('q-card');
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = 'slide-up 0.35s cubic-bezier(0.175,0.885,0.32,1.275)';
+  currentAttempt = 0;
+  updateHeader();
+  setTimeout(() => input.focus(), 300);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('feedback-overlay').classList.contains('active')) {
+      nextQuestion();
+    } else if (document.getElementById('level-clear-overlay').classList.contains('active')) {
+      startNextLevel();
+    } else if (document.getElementById('game-screen').style.display === 'flex') {
+      submitAnswer();
+    }
+  }
+});
+
+function submitAnswer() {
+  const input = document.getElementById('answer-input');
+  const val = input.value.trim();
+  if (val === '') {
+    input.style.borderColor = '#ef4444';
+    input.style.animation = 'none';
+    input.offsetHeight;
+    input.style.animation = 'shake 0.3s';
+    setTimeout(() => input.style.borderColor = '', 600);
+    return;
+  }
+
+  const userAns = parseInt(val, 10);
+  const q = currentQuestions[currentIndex];
+  const isRight = userAns === q.answer;
+
+  if (isRight) {
+    correctCount++; totalCorrect++;
+    masteredIds.add(q.id);
+    totalAnswered++;
+    allResults.push({ question: q.display, userAns, correct: q.answer, isRight: true, level: currentLevel, qData: q });
+
+    // Mark correct on server
+    api('/api/mark-correct', 'POST', { question_id: q.id });
+
+    const cfg = LEVEL_CONFIG[currentLevel - 1];
+    document.getElementById('fb-emoji').textContent = '🎉';
+    document.getElementById('fb-title').textContent = CORRECT_MSGS[Math.floor(Math.random() * CORRECT_MSGS.length)];
+    document.getElementById('fb-detail').innerHTML = `答案是 <b>${q.answer}</b>，你答对了！`;
+    const fbBtn = document.getElementById('fb-btn');
+    fbBtn.style.background = '#22c55e';
+    const isLast = currentIndex >= currentQuestions.length - 1;
+    fbBtn.textContent = isLast ? '查看关卡成绩 📊' : '下一题 ➡️';
+    document.getElementById('feedback-overlay').classList.add('active');
+    launchMiniConfetti();
+
+  } else {
+    currentAttempt++;
+    if (currentAttempt === 1) {
+      document.getElementById('fb-emoji').textContent = '🤔';
+      document.getElementById('fb-title').textContent = '再想想哦～';
+      document.getElementById('fb-detail').innerHTML = `你答的是 <b>${userAns}</b>，好像不太对哦。<br>不着急，再想一想吧！💪`;
+      const fbBtn = document.getElementById('fb-btn');
+      fbBtn.style.background = LEVEL_CONFIG[currentLevel - 1].gradient;
+      fbBtn.textContent = '再试一次 ✏️';
+      fbBtn.onclick = function() {
+        document.getElementById('feedback-overlay').classList.remove('active');
+        input.value = ''; input.focus();
+        fbBtn.onclick = function() { nextQuestion(); };
+      };
+      document.getElementById('feedback-overlay').classList.add('active');
+    } else if (currentAttempt === 2) {
+      const hint = generateHint(q);
+      document.getElementById('fb-emoji').textContent = '💡';
+      document.getElementById('fb-title').textContent = '让我来帮你想想...';
+      document.getElementById('fb-detail').innerHTML =
+        `你答的是 <b>${userAns}</b>，还是不对哦。<br>` +
+        `<div class="hint-box"><div class="hint-title"><span class="hint-icon">🧙‍♂️</span>小提示</div>${hint}</div>`;
+      const fbBtn = document.getElementById('fb-btn');
+      fbBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+      fbBtn.textContent = '我再算一次 ✏️';
+      fbBtn.onclick = function() {
+        document.getElementById('feedback-overlay').classList.remove('active');
+        input.value = ''; input.focus();
+        fbBtn.onclick = function() { nextQuestion(); };
+      };
+      document.getElementById('feedback-overlay').classList.add('active');
+    } else {
+      totalAnswered++;
+      allResults.push({ question: q.display, userAns, correct: q.answer, isRight: false, level: currentLevel, qData: q });
+      wrongInRound.push(q);
+      api('/api/mark-wrong', 'POST', { question_id: q.id });
+
+      document.getElementById('fb-emoji').textContent = '😢';
+      document.getElementById('fb-title').textContent = '没关系，记住答案下次就会了！';
+      document.getElementById('fb-detail').innerHTML =
+        `你答的是 <b>${userAns}</b>，正确答案是 <span class="correct-ans">${q.answer}</span>` +
+        `<br><span style="font-size:0.85rem;color:#999;margin-top:4px;display:inline-block">📝 下次再遇到这道题，你一定能答对！</span>`;
+      const fbBtn = document.getElementById('fb-btn');
+      fbBtn.style.background = LEVEL_CONFIG[currentLevel - 1].gradient;
+      const isLast = currentIndex >= currentQuestions.length - 1;
+      fbBtn.textContent = isLast ? '查看关卡成绩 📊' : '下一题 ➡️';
+      fbBtn.onclick = function() { nextQuestion(); };
+      document.getElementById('feedback-overlay').classList.add('active');
+    }
+  }
+}
+
+function generateHint(q) {
+  const display = q.display.replace(' = ?', '').replace('= ?', '').trim();
+  const parts = display.match(/(\d+)\s*([+\-])\s*(\d+)(?:\s*([+\-])\s*(\d+))?/);
+  if (!parts) return `仔细看看算式，一步一步慢慢算哦～`;
+  const a = parseInt(parts[1]);
+  const op1 = parts[2];
+  const b = parseInt(parts[3]);
+  const op2 = parts[4];
+  const c = parts[5] ? parseInt(parts[5]) : null;
+
+  if (c !== null && op2) {
+    const mid = op1 === '+' ? a + b : a - b;
+    return `这道题有两步哦！<br>第一步：先算 <b>${a} ${op1} ${b} = ?</b><br>第二步：再用第一步的结果 ${op2} ${c}<br>试试看：<b>${a} ${op1} ${b}</b> 等于多少？`;
+  }
+  if (op1 === '+') {
+    if (b <= 10 && a <= 10) {
+      return `数一数：从 <b>${a}</b> 开始，再往后数 <b>${b}</b> 个数，数到几呢？<br><span style="color:#888">💭 ${a}... 然后 ${Array.from({length: Math.min(b,5)}, (_,i)=>a+i+1).join('... ')}...</span>`;
+    } else if (b < 10) {
+      const ones_a = a % 10; const ones_sum = ones_a + b;
+      if (ones_sum >= 10) return `个位 <b>${ones_a} + ${b} = ${ones_sum}</b>，超过10了要进位哦！<br>想想看：<b>${ones_a} + ${b}</b> 等于多少？十位要加1！`;
+      return `十位不变，只要算个位：<b>${ones_a} + ${b} = ?</b>`;
+    } else {
+      const ones = (a % 10) + (b % 10);
+      return `先把个位加起来：<b>${a%10} + ${b%10} = ${ones}</b>` + (ones >= 10 ? `，超过10要进位！` : ``) + `<br>再把十位加起来` + (ones >= 10 ? `（别忘了加进位的1）` : ``) + `<br>试试看吧！`;
+    }
+  } else {
+    if (a <= 20 && b <= 10) {
+      return `从 <b>${a}</b> 开始，往回数 <b>${b}</b> 个数。<br><span style="color:#888">💭 ${a}... ${Array.from({length: Math.min(b,4)}, (_,i)=>a-i-1).join('... ')}...</span><br>数到几呢？`;
+    }
+    const ones_a = a % 10; const ones_b = b % 10;
+    if (ones_a < ones_b) return `个位 <b>${ones_a}</b> 不够减 <b>${ones_b}</b>，要向十位借1变成 <b>${ones_a + 10}</b>！<br><b>${ones_a + 10} - ${ones_b} = ?</b>，十位记得减1哦！`;
+    return `十位：<b>${Math.floor(a/10)} - ${Math.floor(b/10)} = ?</b><br>个位：<b>${ones_a} - ${ones_b} = ?</b><br>拼起来就是答案啦！`;
+  }
+}
+
+function nextQuestion() {
+  document.getElementById('feedback-overlay').classList.remove('active');
+  document.getElementById('fb-btn').onclick = function() { nextQuestion(); };
+  currentIndex++;
+  if (currentIndex < currentQuestions.length) {
+    setTimeout(showQuestion, 150);
+  } else {
+    stopTimer();
+    totalTimerSeconds += timerSeconds;
+    showLevelClear();
+  }
+}
+
+// ==================== SCORE CALCULATION ====================
+async function calculateAndApplyScore() {
+  const lv = currentLevel;
+  const totalInRound = currentQuestions.length;
+  const wrongCount = totalInRound - correctCount;
+
+  let delta = 0;
+  if (correctCount === totalInRound) {
+    // 全对：加满分
+    delta = SCORE_PER_LEVEL[lv] || 10;
+  }
+  // 每道错题扣分
+  delta -= wrongCount * PENALTY_PER_WRONG;
+
+  roundScoreDelta = delta;
+
+  if (delta !== 0) {
+    const reason = `第${lv}关: 答对${correctCount}/${totalInRound}`;
+    const result = await api('/api/update-score', 'POST', { delta, reason });
+    if (result.ok) {
+      currentUser.score = result.score;
+    }
+  }
+  return delta;
+}
+
+async function showLevelClear() {
+  const cfg = LEVEL_CONFIG[currentLevel - 1];
+  const pct = Math.round((correctCount / currentQuestions.length) * 100);
+  const stars = pct === 100 ? 3 : pct >= 70 ? 2 : pct >= 40 ? 1 : 0;
+
+  // Calculate score
+  const delta = await calculateAndApplyScore();
+
+  document.getElementById('lc-emoji').textContent = stars === 3 ? '🏆' : stars === 2 ? '🌟' : stars === 1 ? '💪' : '📚';
+  document.getElementById('lc-title').textContent = `${cfg.emoji} 第${currentLevel}关 · ${cfg.name} 通关！`;
+  document.getElementById('lc-stats').textContent = `答对 ${correctCount}/${currentQuestions.length}，正确率 ${pct}%`;
+  document.getElementById('lc-time').textContent = `⏱️ 用时 ${formatTime(timerSeconds)}`;
+  document.getElementById('lc-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+
+  // Score change display
+  const scoreEl = document.getElementById('lc-score-change');
+  if (delta > 0) {
+    scoreEl.textContent = `🎉 积分 +${delta}`;
+    scoreEl.className = 'lc-score-change score-up';
+  } else if (delta < 0) {
+    scoreEl.textContent = `😢 积分 ${delta}`;
+    scoreEl.className = 'lc-score-change score-down';
+  } else {
+    scoreEl.textContent = `积分不变`;
+    scoreEl.className = 'lc-score-change';
+  }
+
+  const nextBtn = document.getElementById('lc-next-btn');
+  if (currentLevel < 5 && levelQuestions[currentLevel + 1]?.length > 0) {
+    const nextCfg = LEVEL_CONFIG[currentLevel];
+    nextBtn.textContent = `进入第${currentLevel+1}关 · ${nextCfg.name} ${nextCfg.emoji}`;
+    nextBtn.style.background = nextCfg.gradient;
+  } else {
+    nextBtn.textContent = '查看总成绩 🏆';
+    nextBtn.style.background = 'linear-gradient(135deg, #FFD700, #FF8C00)';
+  }
+
+  document.getElementById('progress-bar-fill').style.width = '100%';
+  document.getElementById('level-clear-overlay').classList.add('active');
+  if (stars === 3) launchConfetti();
+}
+
+function startNextLevel() {
+  document.getElementById('level-clear-overlay').classList.remove('active');
+  if (currentLevel < 5 && levelQuestions[currentLevel + 1]?.length > 0) {
+    currentLevel++;
+    startLevel(currentLevel);
+    startTimer();
+  } else {
+    showFinalResult();
+  }
+}
+
+// ==================== FINAL RESULT ====================
+function showFinalResult() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'flex';
+
+  const pct = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+  let emoji, title;
+  if (pct === 100) { emoji = '🏆'; title = '满分通关！你是数学王者！'; }
+  else if (pct >= 80) { emoji = '🌟'; title = '非常棒！几乎完美！'; }
+  else if (pct >= 60) { emoji = '💪'; title = '不错！继续加油！'; }
+  else { emoji = '📚'; title = '需要多多练习哦～'; }
+
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-score').textContent = `${totalCorrect} / ${totalAnswered}`;
+  document.getElementById('result-detail').textContent = `正确率 ${pct}%`;
+  document.getElementById('result-time').textContent = `⏱️ 总用时 ${formatTime(totalTimerSeconds)}`;
+
+  const table = document.getElementById('result-table');
+  table.innerHTML = '';
+  for (const r of allResults) {
+    const div = document.createElement('div');
+    div.className = 'result-row';
+    div.innerHTML = `
+      <span class="rr-q">${r.question}</span>
+      <span class="rr-ans">你答 ${r.userAns}</span>
+      <span class="${r.isRight ? 'rr-correct' : 'rr-wrong'}">${r.isRight ? '✔' : `✘ → ${r.correct}`}</span>
+    `;
+    table.appendChild(div);
+  }
+
+  if (wrongInRound.length > 0) {
+    document.getElementById('warning-banner').style.display = 'block';
+    document.getElementById('warning-list').innerHTML = wrongInRound.map(q => `• ${q.display}`).join('<br>');
+    document.getElementById('retry-wrong-btn').style.display = 'inline-block';
+  } else {
+    document.getElementById('warning-banner').style.display = 'none';
+    document.getElementById('retry-wrong-btn').style.display = 'none';
+  }
+
+  if (pct === 100) launchConfetti();
+}
+
+// ==================== RETRY ROUND ====================
+function startRetryRound() {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('retry-list').innerHTML = wrongInRound.map(q => `• ${q.display}`).join('<br>');
+  document.getElementById('retry-intro').classList.add('active');
+}
+
+function beginRetry() {
+  document.getElementById('retry-intro').classList.remove('active');
+  isRetryMode = true;
+  shuffle(wrongInRound);
+  currentQuestions = [...wrongInRound];
+  wrongInRound = [];
+  currentIndex = 0;
+  correctCount = 0;
+  totalCorrect = 0;
+  totalAnswered = 0;
+  totalTimerSeconds = 0;
+  allResults = [];
+  currentLevel = 6;
+  LEVEL_CONFIG[5] = { level: 6, name: '错题重做', emoji: '🔥', color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #f97316)' };
+  document.getElementById('game-screen').style.display = 'flex';
+  updateHeader();
+  showQuestion();
+  startTimer();
+}
+
+// ==================== HOME ====================
+function goHome() {
+  if (confirm('确定要返回首页吗？当前进度不会保存哦～')) doGoHome();
+}
+
+function goHomeFromOverlay() {
+  document.getElementById('level-clear-overlay').classList.remove('active');
+  doGoHome();
+}
+
+function goHomeFromResult() {
+  doGoHome();
+}
+
+async function doGoHome() {
+  stopTimer();
+  // Reload fresh data from server
+  const qData = await api('/api/questions');
+  if (qData.ok) {
+    ALL_QUESTIONS = qData.questions;
+    masteredIds = new Set(qData.mastered_ids);
+  }
+  const meData = await api('/api/me');
+  if (meData.ok) currentUser = meData.user;
+
+  for (let lv = 1; lv <= 5; lv++) {
+    levelQuestions[lv] = ALL_QUESTIONS.filter(q => q.level === lv && !masteredIds.has(q.id));
+    shuffle(levelQuestions[lv]);
+  }
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+  updateStartScreen();
+}
+
+// ==================== CONFETTI ====================
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const particles = [];
+  const colors = ['#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'];
+  for (let i = 0; i < 150; i++) {
+    particles.push({
+      x: Math.random()*canvas.width, y: Math.random()*canvas.height-canvas.height,
+      w: Math.random()*10+5, h: Math.random()*6+3,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      vx: (Math.random()-0.5)*4, vy: Math.random()*3+2,
+      rot: Math.random()*360, vr: (Math.random()-0.5)*10
+    });
+  }
+  let frame = 0;
+  function animate() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive = false;
+    for (const p of particles) {
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.vy+=0.05;
+      if(p.y<canvas.height+20)alive=true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    }
+    frame++;
+    if(alive&&frame<300)requestAnimationFrame(animate);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  animate();
+}
+
+function launchMiniConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const colors=['#FFD700','#22c55e','#4ECDC4','#FF6B6B'];
+  const particles=[];
+  const cx=canvas.width/2, cy=canvas.height/2;
+  for(let i=0;i<30;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=Math.random()*6+2;
+    particles.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-3,size:Math.random()*6+3,color:colors[Math.floor(Math.random()*colors.length)],life:1});
+  }
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    for(const p of particles){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life-=0.02;
+      if(p.life>0){alive=true;ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}
+    }
+    ctx.globalAlpha=1;
+    if(alive)requestAnimationFrame(animate);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  animate();
+}
+
+// ==================== BATCH ADD QUESTION ====================
+let currentPhotoB64 = '';
+let currentMediaType = 'image/jpeg';
+let reviewExpressions = []; // 兼容旧引用，已不再使用
+
+function openAddQuestion() {
+  switchBatchTab('photo');
+  clearPhoto();
+  resetExprTable();
+  document.getElementById('batch-result').style.display = 'none';
+  document.getElementById('add-overlay').classList.add('active');
+}
+
+function closeAddQuestion() {
+  document.getElementById('add-overlay').classList.remove('active');
+}
+
+function switchBatchTab(tab) {
+  document.getElementById('tab-photo').classList.toggle('active', tab === 'photo');
+  document.getElementById('tab-manual').classList.toggle('active', tab === 'manual');
+  // 拍照面板只在 photo tab 显示；表格和确认按钮始终可见
+  document.getElementById('panel-photo').style.display = tab === 'photo' ? 'block' : 'none';
+  document.getElementById('batch-result').style.display = 'none';
+  if (tab === 'manual') {
+    setTimeout(() => {
+      const first = document.querySelector('.expr-row-input');
+      if (first) first.focus();
+    }, 150);
+  }
+}
+
+// ---- 表格行管理 ----
+function resetExprTable(rows) {
+  const tbody = document.getElementById('expr-tbody');
+  tbody.innerHTML = '';
+  const initRows = rows || ['', '', ''];
+  initRows.forEach(v => addExprRow(v));
+  updateTableCount();
+}
+
+function addExprRow(value = '') {
+  const tbody = document.getElementById('expr-tbody');
+  const idx = tbody.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'expr-row';
+  row.innerHTML = `
+    <span class="expr-row-num">${idx}</span>
+    <input class="expr-row-input" type="text" inputmode="numeric"
+           placeholder="如：25+18" value="${value}"
+           oninput="updateTableCount()"
+           onkeydown="handleRowKeydown(event, this)" />
+    <button class="expr-row-del" onclick="deleteRow(this)" title="删除这行">✕</button>
+  `;
+  tbody.appendChild(row);
+  updateTableCount();
+  // 如果有值，滚动到底部
+  if (value) tbody.scrollTop = tbody.scrollHeight;
+}
+
+function deleteRow(btn) {
+  const row = btn.closest('.expr-row');
+  row.remove();
+  // 重新编号
+  document.querySelectorAll('.expr-row-num').forEach((el, i) => { el.textContent = i + 1; });
+  updateTableCount();
+}
+
+function handleRowKeydown(e, input) {
+  if (e.key === 'Enter') {
+    // 回车跳到下一行，或在末行新增一行
+    const rows = [...document.querySelectorAll('.expr-row-input')];
+    const idx = rows.indexOf(input);
+    if (idx < rows.length - 1) {
+      rows[idx + 1].focus();
+    } else {
+      addExprRow();
+      setTimeout(() => {
+        const all = document.querySelectorAll('.expr-row-input');
+        all[all.length - 1].focus();
+      }, 50);
+    }
+    e.preventDefault();
+  }
+}
+
+function updateTableCount() {
+  const filled = [...document.querySelectorAll('.expr-row-input')]
+    .filter(el => el.value.trim()).length;
+  const el = document.getElementById('expr-table-count');
+  el.textContent = filled > 0 ? `已填 ${filled} 道` : '';
+}
+
+// ---- 拍照 / 图片上传 ----
+function handlePhotoSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  loadPhotoFile(file);
+}
+
+function handlePhotoDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadPhotoFile(file);
+}
+
+function loadPhotoFile(file) {
+  currentMediaType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    currentPhotoB64 = dataUrl.split(',')[1];
+    document.getElementById('photo-drop-zone').style.display = 'none';
+    document.getElementById('photo-preview-wrap').style.display = 'block';
+    document.getElementById('photo-preview').src = dataUrl;
+    document.getElementById('ocr-btn').style.display = 'block';
+    document.getElementById('ocr-status').textContent = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  currentPhotoB64 = '';
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-drop-zone').style.display = 'flex';
+  document.getElementById('photo-preview-wrap').style.display = 'none';
+  document.getElementById('ocr-btn').style.display = 'none';
+  document.getElementById('ocr-status').textContent = '';
+}
+
+async function doOCR() {
+  if (!currentPhotoB64) return;
+  const btn = document.getElementById('ocr-btn');
+  const status = document.getElementById('ocr-status');
+  btn.disabled = true;
+  btn.textContent = '🤖 AI识别中...';
+  status.textContent = '';
+
+  try {
+    const res = await api('/api/ocr', 'POST', {
+      image_b64: currentPhotoB64,
+      media_type: currentMediaType
+    });
+    if (res.ok && res.expressions.length > 0) {
+      // 把识别结果填入表格（清空空行后追加）
+      const existing = [...document.querySelectorAll('.expr-row-input')]
+        .map(el => el.value.trim()).filter(Boolean);
+      resetExprTable([...existing, ...res.expressions]);
+      status.textContent = `✅ 识别到 ${res.expressions.length} 道算式，已填入下方表格，确认后点击添加`;
+    } else if (res.ok && res.expressions.length === 0) {
+      status.textContent = '⚠️ 未识别到算式，请换一张更清晰的图片试试';
+    } else {
+      status.textContent = '❌ ' + (res.error || '识别失败');
+    }
+  } catch(e) {
+    status.textContent = '❌ 网络错误：' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 AI识别算式';
+}
+
+// ---- 提交表格 ----
+async function submitTable() {
+  const inputs = [...document.querySelectorAll('.expr-row-input')];
+  const exprs = inputs.map(el => el.value.trim()).filter(Boolean);
+
+  if (exprs.length === 0) {
+    showToast('请至少输入一道算式', 'warning');
+    return;
+  }
+
+  // 格式校验：必须含数字和运算符
+  const invalid = exprs.filter(e => !/\d/.test(e) || !/[+\-]/.test(e));
+  if (invalid.length > 0) {
+    showToast(`格式有误：${invalid.slice(0,3).join('、')}`, 'warning');
+    return;
+  }
+
+  const btn = document.querySelector('.review-add-btn');
+  btn.disabled = true;
+  btn.textContent = '添加中...';
+
+  const res = await api('/api/batch-add', 'POST', { expressions: exprs });
+  btn.disabled = false;
+  btn.textContent = '✅ 确认添加到错题本';
+
+  if (res.ok) {
+    const resultEl = document.getElementById('batch-result');
+    let html = `<div class="br-summary">${res.summary}</div>`;
+    if (res.added.length > 0)
+      html += `<div class="br-added">✅ 已添加：${res.added.join('、')}</div>`;
+    if (res.duplicates.length > 0)
+      html += `<div class="br-dup">⚠️ 重复跳过：${res.duplicates.join('、')}</div>`;
+    if (res.errors.length > 0)
+      html += `<div class="br-err">❌ 无法识别：${res.errors.join('、')}</div>`;
+    resultEl.innerHTML = html;
+    resultEl.style.display = 'block';
+
+    // 清空已成功添加的行，保留重复和错误的
+    const keepSet = new Set([...res.duplicates, ...res.errors]);
+    resetExprTable(exprs.filter(e => keepSet.has(e)));
+
+    if (res.added.length > 0) {
+      const qData = await api('/api/questions');
+      if (qData.ok) { ALL_QUESTIONS = qData.questions; masteredIds = new Set(qData.mastered_ids); }
+      updateStartScreen();
+    }
+  } else {
+    showToast('❌ ' + (res.error || '添加失败'), 'error');
+  }
+}
+function showToast(msg, type) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ==================== BOOT ====================
+(async function boot() {
+  if (authToken) {
+    // Try auto-login with stored token
+    await loadUserAndStart();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+})();
+</script>
+</body>
+</html>
